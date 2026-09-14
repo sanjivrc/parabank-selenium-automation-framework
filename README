@@ -83,4 +83,53 @@ A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the Maven test suite
 - Move test data (usernames, amounts, addresses) into external JSON/CSV files
 - Add Fluent Wait for a couple of especially flaky elements
 - Extend Find Transactions coverage once a stable seeded test account exists
+- Add cross-browser matrix execution in CI (Chrome + Firefox)    ├── java/com/parabank
+    │   ├── tests/       → Test classes (@Test methods + assertions)
+    │   └── listeners/   → TestListener: hooks into TestNG for reporting/screenshots
+    └── resources
+        ├── config/config.properties
+        ├── testng.xml
+        └── log4j2.xml
+```
+
+**Design principles applied:**
+- Page Object Model — pages own locators/actions, tests own assertions
+- No hardcoded values — browser/base URL externalized to `config.properties`
+- No `Thread.sleep()` — all synchronization via `WebDriverWait` (explicit waits)
+- ThreadLocal WebDriver — framework is parallel-execution safe out of the box
+- TestNG groups (`smoke`, `sanity`, `regression`) for different execution needs
+
+## Running the Tests
+
+```bash
+# Run the full suite (as defined in testng.xml)
+mvn clean test
+
+# Run only smoke tests
+mvn clean test -Dgroups=smoke
+```
+
+Reports are generated at `reports/ExtentReport.html`. Failure screenshots are saved to `reports/screenshots/`. Logs are written to `reports/logs/automation.log`.
+
+## Before You Run
+
+The test data (`VALID_USERNAME` / `VALID_PASSWORD` constants and the placeholder account IDs in `TransferFundsTest`) needs to point to a real registered ParaBank test user, since ParaBank resets demo data periodically. Register a user via `RegistrationTest` or manually, then update those constants.
+
+## TestNG Groups
+
+| Group | Purpose | When to run |
+|---|---|---|
+| `smoke` | Critical happy-path checks | Every commit |
+| `sanity` | Broader but still fast checks | Before merging a PR |
+| `regression` | Full positive + negative coverage | Nightly / before release |
+
+## CI/CD
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the Maven test suite in headless Chrome on every push/PR to `main`, and uploads the Extent report as a build artifact.
+
+## Future Improvements
+
+- Move test data (usernames, amounts, addresses) into external JSON/CSV files
+- Add Fluent Wait for a couple of especially flaky elements
+- Extend Find Transactions coverage once a stable seeded test account exists
 - Add cross-browser matrix execution in CI (Chrome + Firefox)
